@@ -1,6 +1,7 @@
 import cv2
 import mediapipe as mp
 import pyautogui
+import math
 
 #Inicjalizacja mediapipe
 mp_hands = mp.solutions.hands
@@ -21,6 +22,8 @@ screen_w, screen_h = pyautogui.size()
 smoothening = 3
 prev_x, prev_y = 0, 0 
 current_x, current_y = 0, 0
+
+cliked = False
 
 while cap.isOpened():
     success, frame = cap.read()
@@ -53,6 +56,22 @@ while cap.isOpened():
 
             #Aktualizacja pozycji
             prev_x, prev_y = current_x, current_y
+
+            #Kliknięcie za pomocą kciuka i palca środkowego
+            thumb = hand_landmarks.landmark[4]
+            middle_finger = hand_landmarks.landmark[12]
+            
+            distance = math.hypot(thumb.x - middle_finger.x, thumb.y - middle_finger.y)
+            if distance < 0.05:
+                if not clicked:
+                    pyautogui.click()
+                    clicked = True
+                    #Wizualizacja
+                    h,w,c = frame.shape
+                    cx, cy = int(middle_finger.x * w), int(middle_finger.y * h)
+                    cv2.circle(frame, (cx, cy), 15, (0,255,0), cv2.FILLED)
+            else:
+                clicked = False
     
     cv2.imshow("Hand Gesture Control", frame)
     if cv2.waitKey(1) & 0xFF == ord('q'):
