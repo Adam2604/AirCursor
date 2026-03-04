@@ -1,5 +1,6 @@
 import cv2
 import mediapipe as mp
+import pyautogui
 
 #Inicjalizacja mediapipe
 mp_hands = mp.solutions.hands
@@ -12,6 +13,10 @@ hands = mp_hands.Hands(
 
 mp_draw = mp.solutions.drawing_utils
 cap = cv2.VideoCapture(0)
+
+#Pobieranie rozdzielczości ekranu
+screen_w, screen_h = pyautogui.size()
+
 while cap.isOpened():
     success, frame = cap.read()
     if not success:
@@ -27,6 +32,14 @@ while cap.isOpened():
         for hand_landmarks in results.multi_hand_landmarks:
             #Rysowanie punktów i połączeń na dłoni
             mp_draw.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+
+            #Sterowanie kursorem czubkiem palca wskazującego
+            index_finger = hand_landmarks.landmark[8]
+            #Przeliczanie pozycji palca na piksele ekranu
+            cursor_x = int(index_finger.x * screen_w)
+            cursor_y = int(index_finger.y * screen_h)
+            #Przesunięcie kursora
+            pyautogui.moveTo(cursor_x, cursor_y, _pause=False)
     
     cv2.imshow("Hand Gesture Control", frame)
     if cv2.waitKey(1) & 0xFF == ord('q'):
