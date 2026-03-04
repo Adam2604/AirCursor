@@ -17,6 +17,11 @@ cap = cv2.VideoCapture(0)
 #Pobieranie rozdzielczości ekranu
 screen_w, screen_h = pyautogui.size()
 
+#Zmienne do wygładzania ruchu
+smoothening = 3
+prev_x, prev_y = 0, 0 
+current_x, current_y = 0, 0
+
 while cap.isOpened():
     success, frame = cap.read()
     if not success:
@@ -38,8 +43,16 @@ while cap.isOpened():
             #Przeliczanie pozycji palca na piksele ekranu
             cursor_x = int(index_finger.x * screen_w)
             cursor_y = int(index_finger.y * screen_h)
+            
+            #Wygładzanie ruchu
+            current_x = prev_x + (cursor_x - prev_x) / smoothening
+            current_y = prev_y + (cursor_y - prev_y) / smoothening
+            
             #Przesunięcie kursora
-            pyautogui.moveTo(cursor_x, cursor_y, _pause=False)
+            pyautogui.moveTo(current_x, current_y, _pause=False)
+
+            #Aktualizacja pozycji
+            prev_x, prev_y = current_x, current_y
     
     cv2.imshow("Hand Gesture Control", frame)
     if cv2.waitKey(1) & 0xFF == ord('q'):
