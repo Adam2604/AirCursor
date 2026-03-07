@@ -26,8 +26,16 @@ current_x, current_y = 0, 0
 
 clicked = False
 
+#Zmienne do scrollowania
+scroll_mode = False
+prev_scroll_y = 0
+scroll_sensitivity = 350
+
 #Margines aktywnego ekranu
 margin = 120
+
+def is_finger_extended(hand_landmarks, finger_tip_id, finger_pip_id):
+    return hand_landmarks.landmark[finger_tip_id].y < hand_landmarks.landmark[finger_pip_id].y
 
 while cap.isOpened():
     success, frame = cap.read()
@@ -50,23 +58,53 @@ while cap.isOpened():
             mp_draw.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
 
             if i == 0:
-                #Sterowanie kursorem czubkiem palca wskazującego
+                #Sprawdzanie stanu palców
+                index_up = is_finger_extended(hand_landmarks, 8, 6)
+                middle_up = is_finger_extended(hand_landmarks, 12, 10)
+                ring_up = is_finger_extended(hand_landmarks, 16, 14)
+
                 index_finger = hand_landmarks.landmark[8]
-                #Przeliczanie pozycji palca na piksele ekranu
-                x1, y1 = int(index_finger.x * w), int(index_finger.y * h)
+                middle_finger = hand_landmarks.landmark[12]
 
-                cursor_x = np.interp(x1, (margin, w-margin), (0, screen_w))
-                cursor_y = np.interp(y1, (margin, h-margin), (0, screen_h))
-                
-                #Wygładzanie ruchu
-                current_x = prev_x + (cursor_x - prev_x) / smoothening
-                current_y = prev_y + (cursor_y - prev_y) / smoothening
-                
-                #Przesunięcie kursora
-                pyautogui.moveTo(current_x, current_y, _pause=False)
+                if index_up and middle_up and not ring_up:
+                    #Tryb scrollowania - dwa palce w górze
+                    mid_y = (index_finger.y + middle_finger.y) / 2
+                    mid_x = (index_finger.x + middle_finger.x) / 2
 
-                #Aktualizacja pozycji
-                prev_x, prev_y = current_x, current_y
+                    if not scroll_mode:
+                        scroll_mode = True
+                        prev_scroll_y = mid_y
+                    else:
+                        delta_y = prev_scroll_y - mid_y
+                        scroll_amount = int(delta_y * scroll_sensitivity * 10)
+                        if abs(scroll_amount) > 0:
+                            pyautogui.scroll(scroll_amount, _pause=False)
+                            prev_scroll_y = mid_y
+
+                    #Wizualizacja trybu scroll
+                    cx = int(mid_x * w)
+                    cy = int(mid_y * h)
+                    cv2.circle(frame, (cx, cy), 12, (255, 165, 0), cv2.FILLED)
+                    cv2.putText(frame, "SCROLL", (cx + 20, cy), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 165, 0), 2)
+
+                else:
+                    scroll_mode = False
+                    #Sterowanie kursorem czubkiem palca wskazującego
+                    #Przeliczanie pozycji palca na piksele ekranu
+                    x1, y1 = int(index_finger.x * w), int(index_finger.y * h)
+
+                    cursor_x = np.interp(x1, (margin, w-margin), (0, screen_w))
+                    cursor_y = np.interp(y1, (margin, h-margin), (0, screen_h))
+                    
+                    #Wygładzanie ruchu
+                    current_x = prev_x + (cursor_x - prev_x) / smoothening
+                    current_y = prev_y + (cursor_y - prev_y) / smoothening
+                    
+                    #Przesunięcie kursora
+                    pyautogui.moveTo(current_x, current_y, _pause=False)
+
+                    #Aktualizacja pozycji
+                    prev_x, prev_y = current_x, current_y
 
             elif i == 1:
                 has_second_hand = True
