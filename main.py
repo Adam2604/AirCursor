@@ -3,6 +3,7 @@ import mediapipe as mp
 import pyautogui
 import math
 import numpy as np
+import time
 
 #Inicjalizacja mediapipe
 mp_hands = mp.solutions.hands
@@ -30,6 +31,11 @@ clicked = False
 scroll_mode = False
 prev_scroll_y = 0
 scroll_sensitivity = 350
+
+#Zmienne do gestu cofania (ściśnięcie dłoni)
+fist_detected = False
+fist_cooldown = 1.0 #Czas blokady po cofnięciu
+last_fist_time = 0
 
 #Margines aktywnego ekranu
 margin = 120
@@ -123,11 +129,34 @@ while cap.isOpened():
                         cv2.circle(frame, (cx, cy), 15, (0,255,0), cv2.FILLED)
                 else:
                     clicked = False
+
+                #Gest cofania - ściśnięcie dłoni
+                index_up2 = is_finger_extended(hand_landmarks, 8, 6)
+                middle_up2 = is_finger_extended(hand_landmarks, 12, 10)
+                ring_up2 = is_finger_extended(hand_landmarks, 16, 14)
+                pinky_up2 = is_finger_extended(hand_landmarks, 20, 18)
+                current_time = time.time()
+
+                is_fist = not index_up2 and not middle_up2 and not ring_up2 and not pinky_up2
+
+                if is_fist and not fist_detected and (current_time - last_fist_time) > fist_cooldown:
+                    #Pięść wykryta - cofanie (Alt+Left)
+                    pyautogui.hotkey('alt', 'left', _pause=False)
+                    last_fist_time = current_time
+                    fist_detected = True
+                    #Wizualizacja
+                    wrist = hand_landmarks.landmark[0]
+                    cx, cy = int(wrist.x * w), int(wrist.y * h)
+                    cv2.putText(frame, "<< COFANIE", (cx - 60, cy - 30), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 3)
+                elif not is_fist:
+                    fist_detected = False
                     
         if not has_second_hand:
             clicked = False
+            fist_detected = False
     else:
         clicked = False
+        fist_detected = False
     
     cv2.imshow("Hand Gesture Control", frame)
     if cv2.waitKey(1) & 0xFF == ord('q'):
